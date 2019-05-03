@@ -18,6 +18,7 @@ import org.json.JSONObject;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.uuid.Generators;
+import com.incedo.constants.EventConstants;
 import com.incedo.vos.EventSubmitRequestVO;
 import com.incedo.vos.ExperimentVariantVo;
 
@@ -29,13 +30,9 @@ import com.incedo.vos.ExperimentVariantVo;
 public class EventService {
 
 	public ExperimentVariantVo getEventJsonFromServiceAPI(String userId) throws IOException {
-		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-    	InputStream input = classLoader.getResourceAsStream("/com/incedo/resource/configuration.properties");
-    	Properties prop = new Properties();
-    	prop.load(input);
-        String getserviceURL = prop.getProperty("service.api.url");
-    	int layerId = Integer.parseInt(prop.getProperty("layer.id"));
-    	int channelId = Integer.parseInt(prop.getProperty("channel.id"));
+        String getserviceURL = this.getConfiguredProperty(EventConstants.SERVICEAPIURL);
+    	int layerId = Integer.parseInt(this.getConfiguredProperty(EventConstants.LAYERID));
+    	int channelId = Integer.parseInt(this.getConfiguredProperty(EventConstants.CHANNELID));
 		URL url;
 		String jsonString = null;
 		String apiUrl = getserviceURL +"?channel_id="+channelId+"&layer_id="+layerId+"&user_id="+userId;
@@ -70,26 +67,23 @@ public class EventService {
 		int expId = 1;
 		int variantId = 0;
 		JSONObject obj = new JSONObject(jsonString);
-		if(obj.has("variant_token")) {
-			variantToken = obj.get("variant_token").toString();
+		if(obj.has(EventConstants.VARIANTTOKEN)) {
+			variantToken = obj.get(EventConstants.VARIANTTOKEN).toString();
 		}
-		if(obj.has("bucket")) {
-			bucket = obj.get("bucket").toString();
+		if(obj.has(EventConstants.EXPID)) {
+			expId = (Integer) obj.get(EventConstants.EXPID);
 		}
-		if(obj.has("exp_id")) {
-			expId = (Integer) obj.get("exp_id");
+		if(obj.has(EventConstants.VARIANTID)) {
+			variantId = (Integer) obj.get(EventConstants.VARIANTID);
 		}
-		if(obj.has("variant_id")) {
-			variantId = (Integer) obj.get("variant_id");
+		if(obj.has(EventConstants.EXPTNAME)) {
+			exptName = (String) obj.get(EventConstants.EXPTNAME);
 		}
-		if(obj.has("expt_name")) {
-			exptName = (String) obj.get("expt_name");
+		if(obj.has(EventConstants.LAYERNAME)) {
+			layerName = (String) obj.get(EventConstants.LAYERNAME);
 		}
-		if(obj.has("layer_name")) {
-			layerName = (String) obj.get("layer_name");
-		}
-		if(obj.has("channel_name")) {
-			channelName = (String) obj.get("channel_name");
+		if(obj.has(EventConstants.CHANNELNAME)) {
+			channelName = (String) obj.get(EventConstants.CHANNELNAME);
 		}
 		ExperimentVariantVo experimentVariantVo = new ExperimentVariantVo();
 		experimentVariantVo.setBucket(bucket);
@@ -108,13 +102,9 @@ public class EventService {
 	public void pushNewEvent(EventSubmitRequestVO eventSubmit ) {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
-			ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-	    	InputStream input = classLoader.getResourceAsStream("/com/incedo/resource/configuration.properties");
-	    	Properties prop = new Properties();
-	    	prop.load(input);
 			String requestJSON = mapper.writeValueAsString(eventSubmit);
 			System.out.println("requestJSON ::"+requestJSON);
-			String postEventserviceApi = prop.getProperty("postevent.api.url");
+			String postEventserviceApi = this.getConfiguredProperty(EventConstants.POSTEVENTAPIURL);
 			System.out.println("postEventserviceApi ::"+postEventserviceApi);
 			URL url = new URL(postEventserviceApi);
 			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -168,20 +158,19 @@ public class EventService {
 		return experimentVariantVo.getVariantToken();
 	}
 	
-	public String getStage(String pageName) {
+	public String getStage(String pageName) throws IOException {
     	String stageName = "checkoutStage";
-    	ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-    	InputStream input = classLoader.getResourceAsStream("/com/incedo/resource/configuration.properties");
-    	Properties prop = new Properties();
-    	try {
-			prop.load(input);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
     	if(pageName.equalsIgnoreCase("promo")) {
-    		stageName = prop.getProperty("promoStage");
+    		stageName = this.getConfiguredProperty("promoStage");
     	} 
 		return stageName;
+    }
+	
+	public String getConfiguredProperty(String propertyName) throws IOException {
+    	ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+    	InputStream input = classLoader.getResourceAsStream(EventConstants.CONFIG_PROPERTY_FILE_NAME);
+    	Properties prop = new Properties();
+    	prop.load(input);
+		return prop.getProperty(propertyName);
     }
 }
